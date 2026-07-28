@@ -1,0 +1,249 @@
+/*
+  Design tokens — ultra excel
+  ---------------------------
+  Subject: an internal tool that reads the shape and health of a
+  spreadsheet the instant you drop it in. Audience: engineers/data/ops
+  people who want signal, not marketing.
+
+  Palette (a paper ledger, not a marketing gradient):
+    --paper        #F6F5F1   warm, neutral paper background
+    --surface      #FFFFFF   cards / panels
+    --ink          #1B1F1D   primary text
+    --ink-soft     #5B625E   secondary text
+    --line         #DCDFD9   hairline borders / grid
+    --accent       #1F6F5C   deep ledger green — "verified" cell color
+    --accent-soft  #DCEEE7   accent tint for badges/backgrounds
+    --flag         #B4531F   clay amber — used ONLY to flag missing data
+
+  Type:
+    display  Space Grotesk — wordmark + section headings, used with restraint
+    body     Inter — everything you read
+    data     JetBrains Mono — every number, dtype, filename: the ledger voice
+*/
+
+:root {
+  --paper: #f6f5f1;
+  --surface: #ffffff;
+  --ink: #1b1f1d;
+  --ink-soft: #5b625e;
+  --line: #dcdfd9;
+  --accent: #1f6f5c;
+  --accent-soft: #dceee7;
+  --flag: #b4531f;
+  --flag-soft: #f4e3d6;
+
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.ue-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 20px 80px;
+}
+
+.ue-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 40px;
+  user-select: none;
+}
+
+.ue-wordmark__mark {
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  position: relative;
+  flex-shrink: 0;
+}
+.ue-wordmark__mark::before,
+.ue-wordmark__mark::after {
+  content: "";
+  position: absolute;
+  background: var(--accent);
+}
+.ue-wordmark__mark::before {
+  /* vertical divider */
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1.5px;
+  transform: translateX(-50%);
+}
+.ue-wordmark__mark::after {
+  /* horizontal divider */
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  transform: translateY(-50%);
+}
+
+.ue-wordmark__text {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+.ue-wordmark__text b {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.ue-main {
+  width: 100%;
+  max-width: 640px;
+}
+
+/* ---------- Drop zone: the signature element ---------- */
+
+.ue-dropzone {
+  position: relative;
+  border: 1.5px dashed var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 48px 32px;
+  text-align: center;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.ue-dropzone:hover,
+.ue-dropzone[data-active="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.ue-dropzone:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Faint background spreadsheet grid — the "ledger" motif behind the copy */
+.ue-dropzone__grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.ue-dropzone__grid .ue-col {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: calc(100% / 8);
+  border-right: 1px solid var(--line);
+}
+.ue-dropzone__grid .ue-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: calc(100% / 5);
+  border-bottom: 1px solid var(--line);
+}
+
+/* When processing succeeds, the grid columns fill in left-to-right —
+   evoking a spreadsheet being read column by column. This is the one
+   deliberate animated moment in the whole UI; everything else is still. */
+.ue-dropzone__grid .ue-col[data-filled="true"] {
+  background: var(--accent-soft);
+  animation: ue-col-fill 420ms ease forwards;
+}
+
+@keyframes ue-col-fill {
+  from {
+    background: transparent;
+  }
+  to {
+    background: var(--accent-soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ue-dropzone__grid .ue-col[data-filled="true"] {
+    animation: none;
+    background: var(--accent-soft);
+  }
+}
+
+.ue-dropzone__content {
+  position: relative;
+  z-index: 1;
+}
+
+.ue-dropzone__title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 14px 0 4px;
+}
+
+.ue-dropzone__hint {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.ue-dropzone__filename {
+  display: inline-block;
+  margin-top: 14px;
+  font-family: var(--font-data);
+  font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
+/* ---------- Stat tiles ---------- */
+
+.ue-stat {
+  font-family: var(--font-data);
+}
+.ue-stat__value {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+}
+.ue-stat__label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ue-stat__value[data-flag="true"] {
+  color: var(--flag);
+}
+
+/* ---------- Column table ---------- */
+
+.ue-mono {
+  font-family: var(--font-data);
+  font-size: 13px;
+}
