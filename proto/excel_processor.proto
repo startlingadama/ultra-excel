@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+// Package for the Excel ingestion / processing pipeline.
+package excelprocessor;
+
+// Go import path. Adjust the module prefix to match your go.mod module name.
+option go_package = "ultraexcel/proto/excelprocessor;excelprocessor";
+
+// DataProcessor is implemented by the Python worker and consumed by the
+// Go API Gateway. It is intentionally a single, focused RPC: stream bytes
+// in, get a structured summary out.
+service DataProcessor {
+  // UploadAndProcess accepts a client-streamed sequence of Chunk messages
+  // (the raw bytes of an .xlsx file, split into fixed-size pieces) and
+  // returns a single ProcessingSummary once the whole file has been
+  // received, parsed, and analyzed.
+  //
+  // Using a client-streaming RPC (rather than a single unary call with the
+  // whole file in memory) means neither Go nor Python ever needs to hold
+  // more than one chunk + the assembling buffer in memory at a time on
+  // the transport layer, which keeps peak memory bounded and predictable
+  // even for large workbooks.
+  rpc UploadAndProcess(stream Chunk) returns (ProcessingSummary);
+}
+
+// Chunk is a single piece of the file being uploaded.
+message Chunk {
+  // Raw file bytes for this piece. Recommended chunk size: 32KB-64KB.
+  // gRPC's default max message size (4MB) comfortably accommodates this,
+  // so no special message-size configuration is required for the chunks
+  // themselves (only for the final assembled-in-memory buffer on the
+  // Python side, which is an application-level concern, not a gRPC one).
+  bytes data = 1;
+
+  // Original filename, e.g. "quarterly_report.xlsx". The client SHOULD
+  // populate this only on the FIRST chunk of the stream; the server reads
+  // it once and ignores it on subsequent chunks. It is used purely for
+  // logging/diagnostics and to sanity-check the file extension.
+  string filename = 2;
+}
+
+// ProcessingSummary is the single response returned after the entire
+// stream has been consumed and the workbook has been analyzed.
+message ProcessingSummary {
+  // Whether processing completed successfully. When false, error_message
+  // contains a human-readable explanation and the numeric/collection
+  // fields below should be treated as zero-valued / empty.
+  bool success = 1;
+
+  // Total number of data rows (excluding the header row).
+  int64 total_rows = 2;
+
+  // Total number of columns.
+  int64 total_columns = 3;
+
+  // Column names, in their original order.
+  repeated string columns_names = 4;
+
+  // Total count of missing (NaN/NaT/None) cells across the entire sheet,
+  // computed BEFORE any cleaning step is applied.
+  int64 missing_values_count = 5;
+
+  // Map of column name -> pandas dtype rendered as a string
+  // (e.g. "int64", "float64", "object", "datetime64[ns]", "bool").
+  map<string, string> data_types = 6;
+
+  // Wall-clock time spent on the Python side parsing + analyzing the
+  // file (does NOT include network/streaming transfer time), in
+  // milliseconds.
+  float execution_time_ms = 7;
+
+  // Populated only when success == false. Safe to display to end users;
+  // does not leak stack traces or internal paths.
+  string error_message = 8;
+}
