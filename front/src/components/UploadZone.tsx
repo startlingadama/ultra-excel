@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Text } from "@radix-ui/themes";
 import { FileIcon, UploadIcon } from "@radix-ui/react-icons";
+import { ACCEPTED_EXTENSIONS } from "../api";
 
 interface UploadZoneProps {
   selectedFileName: string | null;
@@ -10,14 +11,13 @@ interface UploadZoneProps {
   onFileSelected: (file: File) => void;
 }
 
-const ACCEPTED_EXTENSION = ".xlsx";
 const GRID_COLUMNS = 8;
 const GRID_ROWS = 5;
 
 /**
  * The drop zone doubles as ultra excel's signature element: a faint
  * spreadsheet grid sits behind the copy, and once a file finishes
- * processing, its columns fill in left-to-right — echoing a workbook
+ * processing, its columns fill in left-to-right - echoing a workbook
  * being read column by column.
  */
 export function UploadZone({
@@ -87,12 +87,12 @@ export function UploadZone({
         {selectedFileName ? <FileIcon width={22} height={22} /> : <UploadIcon width={22} height={22} />}
 
         <div className="ue-dropzone__title">
-          {selectedFileName ? "Fichier prêt" : "Dépose un classeur .xlsx"}
+          {selectedFileName ? "Fichier prêt" : "Dépose un classeur Excel"}
         </div>
         <Text as="p" className="ue-dropzone__hint">
           {selectedFileName
             ? "Clique pour en choisir un autre"
-            : "ou clique pour parcourir — 200 Mo maximum"}
+            : "ou clique pour parcourir - .xlsx, .xls, .xlsm, .xlsb… 200 Mo max"}
         </Text>
 
         {selectedFileName && (
@@ -103,7 +103,7 @@ export function UploadZone({
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPTED_EXTENSION}
+        accept={ACCEPTED_EXTENSIONS.join(",")}
         hidden
         onChange={(e) => handleFiles(e.target.files)}
       />

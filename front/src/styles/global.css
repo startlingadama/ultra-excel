@@ -1,5 +1,5 @@
 /*
-  Design tokens — ultra excel
+  Design tokens - ultra excel
   ---------------------------
   Subject: an internal tool that reads the shape and health of a
   spreadsheet the instant you drop it in. Audience: engineers/data/ops
@@ -11,14 +11,14 @@
     --ink          #1B1F1D   primary text
     --ink-soft     #5B625E   secondary text
     --line         #DCDFD9   hairline borders / grid
-    --accent       #1F6F5C   deep ledger green — "verified" cell color
+    --accent       #1F6F5C   deep ledger green - "verified" cell color
     --accent-soft  #DCEEE7   accent tint for badges/backgrounds
-    --flag         #B4531F   clay amber — used ONLY to flag missing data
+    --flag         #B4531F   clay amber - used ONLY to flag missing data
 
   Type:
-    display  Space Grotesk — wordmark + section headings, used with restraint
-    body     Inter — everything you read
-    data     JetBrains Mono — every number, dtype, filename: the ledger voice
+    display  Space Grotesk - wordmark + section headings, used with restraint
+    body     Inter - everything you read
+    data     JetBrains Mono - every number, dtype, filename: the ledger voice
 */
 
 :root {
@@ -56,6 +56,7 @@ body {
 }
 
 .ue-shell {
+  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -143,7 +144,7 @@ body {
   outline-offset: 3px;
 }
 
-/* Faint background spreadsheet grid — the "ledger" motif behind the copy */
+/* Faint background spreadsheet grid - the "ledger" motif behind the copy */
 .ue-dropzone__grid {
   position: absolute;
   inset: 0;
@@ -166,7 +167,7 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
-/* When processing succeeds, the grid columns fill in left-to-right —
+/* When processing succeeds, the grid columns fill in left-to-right -
    evoking a spreadsheet being read column by column. This is the one
    deliberate animated moment in the whole UI; everything else is still. */
 .ue-dropzone__grid .ue-col[data-filled="true"] {

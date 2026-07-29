@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 
 // Vite dev server config. The /api proxy means the front-end can call
 // same-origin "/api/upload" during development, and Vite forwards it to
-// the Go gateway — no CORS headaches needed on localhost. In production,
+// the Go gateway - no CORS headaches needed on localhost. In production,
 // VITE_API_URL (see .env.example) points directly at the deployed
 // gateway instead.
 export default defineConfig({
