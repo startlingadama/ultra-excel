@@ -1,0 +1,70 @@
+# docker-compose.yml - identity stack for ultra-excel
+#
+# Brings up ONLY the security layer: Postgres (Keycloak's database) and
+# Keycloak itself, pre-configured with a realm/client that requires
+# Authorization Code + PKCE (S256) for the React front-end.
+#
+# The Go gateway and Python worker are NOT containerized here - they keep
+# running as described in the main README (go run / python server.py).
+# The gateway validates access tokens against this Keycloak instance via
+# OIDC discovery; it doesn't need to be on the same Docker network.
+#
+# Usage:
+#   cp .env.example .env      # then edit the generated secrets
+#   docker compose up -d
+#   # Keycloak admin console: http://localhost:8081  (admin / see .env)
+#   # Realm "ultra-excel" is auto-imported on first boot.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ultraexcel-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-keycloak}
+      POSTGRES_USER: ${POSTGRES_USER:-keycloak}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env file}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-keycloak} -d ${POSTGRES_DB:-keycloak}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ultraexcel-identity
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: ultraexcel-keycloak
+    restart: unless-stopped
+    # start-dev is appropriate for local development. For production,
+    # switch to `start` with a proper KC_HOSTNAME, TLS termination in
+    # front (reverse proxy), and drop KC_HTTP_ENABLED/KC_HOSTNAME_STRICT.
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-keycloak}
+      KC_DB_USERNAME: ${POSTGRES_USER:-keycloak}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env file}
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in your .env file}
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    networks:
+      - ultraexcel-identity
+
+volumes:
+  postgres_data:
+
+networks:
+  ultraexcel-identity:
+    driver: bridge
