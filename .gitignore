@@ -19,6 +19,9 @@ front/dist/
 front/.env
 front/.env.local
 
+# --- Identity stack secrets ---
+.env
+
 # --- OS / editors ---
 .DS_Store
 *.log
