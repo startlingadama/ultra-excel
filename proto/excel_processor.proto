@@ -11,7 +11,7 @@ option go_package = "ultraexcel/proto/excelprocessor;excelprocessor";
 // in, get a structured summary out.
 service DataProcessor {
   // UploadAndProcess accepts a client-streamed sequence of Chunk messages
-  // (the raw bytes of an .xlsx file, split into fixed-size pieces) and
+  // (the raw bytes of an Excel workbook, split into fixed-size pieces) and
   // returns a single ProcessingSummary once the whole file has been
   // received, parsed, and analyzed.
   //
@@ -34,18 +34,32 @@ message Chunk {
 
   // Original filename, e.g. "quarterly_report.xlsx". The client SHOULD
   // populate this only on the FIRST chunk of the stream; the server reads
-  // it once and ignores it on subsequent chunks. It is used purely for
-  // logging/diagnostics and to sanity-check the file extension.
+  // it once and ignores it on subsequent chunks. It is used both for
+  // logging/diagnostics AND to pick the correct pandas parsing engine
+  // based on the file extension (see server.py's ENGINE_BY_EXTENSION).
   string filename = 2;
 }
 
-// ProcessingSummary is the single response returned after the entire
-// stream has been consumed and the workbook has been analyzed.
-message ProcessingSummary {
-  // Whether processing completed successfully. When false, error_message
-  // contains a human-readable explanation and the numeric/collection
-  // fields below should be treated as zero-valued / empty.
-  bool success = 1;
+// ColumnStats holds descriptive statistics for a single numeric column.
+// Only populated for columns whose pandas dtype is numeric
+// (int/float variants) - non-numeric columns simply have no entry in
+// SheetSummary.numeric_stats.
+message ColumnStats {
+  double min = 1;
+  double max = 2;
+  double mean = 3;
+  double median = 4;
+  double std_dev = 5;
+
+  // Count of non-null values this statistic was computed over.
+  int64 count = 6;
+}
+
+// SheetSummary is the analysis result for a single worksheet within the
+// workbook.
+message SheetSummary {
+  // The worksheet's name as defined in the workbook, e.g. "Sheet1", "Q1".
+  string sheet_name = 1;
 
   // Total number of data rows (excluding the header row).
   int64 total_rows = 2;
@@ -56,7 +70,7 @@ message ProcessingSummary {
   // Column names, in their original order.
   repeated string columns_names = 4;
 
-  // Total count of missing (NaN/NaT/None) cells across the entire sheet,
+  // Total count of missing (NaN/NaT/None) cells across this sheet,
   // computed BEFORE any cleaning step is applied.
   int64 missing_values_count = 5;
 
@@ -64,12 +78,49 @@ message ProcessingSummary {
   // (e.g. "int64", "float64", "object", "datetime64[ns]", "bool").
   map<string, string> data_types = 6;
 
-  // Wall-clock time spent on the Python side parsing + analyzing the
-  // file (does NOT include network/streaming transfer time), in
+  // Count of fully duplicated rows (all columns identical), computed
+  // BEFORE any cleaning step is applied.
+  int64 duplicate_rows_count = 7;
+
+  // Descriptive statistics for numeric columns only, keyed by column name.
+  map<string, ColumnStats> numeric_stats = 8;
+
+  // A small preview of the data: the first N rows (N=5), each serialized
+  // as a JSON object string, e.g. '{"id": 1, "name": "Alice"}'. Kept as
+  // opaque JSON strings (rather than a typed protobuf structure) since
+  // spreadsheet cells can hold arbitrary/mixed types per column; the
+  // consumer (Go, then the front-end) simply parses each string as JSON.
+  repeated string sample_rows_json = 9;
+}
+
+// ProcessingSummary is the top-level response returned after the entire
+// stream has been consumed and the workbook has been analyzed.
+message ProcessingSummary {
+  // Whether processing completed successfully. When false, error_message
+  // contains a human-readable explanation and the fields below should be
+  // treated as zero-valued / empty.
+  bool success = 1;
+
+  // Original filename as received.
+  string filename = 2;
+
+  // Which pandas engine parsed this file: "openpyxl" (.xlsx/.xlsm/.xltx/.xltm),
+  // "xlrd" (.xls/.xlt), or "pyxlsb" (.xlsb). Useful for diagnostics.
+  string engine_used = 3;
+
+  // Number of worksheets found in the workbook.
+  int64 total_sheets = 4;
+
+  // Per-sheet analysis, in the workbook's original sheet order.
+  repeated SheetSummary sheets = 5;
+
+  // Wall-clock time spent on the Python side parsing + analyzing ALL
+  // sheets (does NOT include network/streaming transfer time), in
   // milliseconds.
-  float execution_time_ms = 7;
+  float execution_time_ms = 6;
 
   // Populated only when success == false. Safe to display to end users;
   // does not leak stack traces or internal paths.
-  string error_message = 8;
+  string error_message = 7;
 }
+
